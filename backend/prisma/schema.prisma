@@ -1,0 +1,117 @@
+// Prisma Schema — Multi-Tenant SaaS Auth Platform
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Enums
+
+enum Role {
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+enum VerificationType {
+  EMAIL
+  PASSWORD_RESET
+}
+
+// Models
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String?  // nullable — OAuth-only users won't have one
+  isVerified   Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  memberships         Membership[]
+  refreshTokens       RefreshToken[]
+  verificationTokens  VerificationToken[]
+  invitesCreated      InviteToken[]        @relation("InviteCreatedBy")
+
+  @@map("users")
+}
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  logo      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships Membership[]
+  invites     InviteToken[]
+
+  @@map("organizations")
+}
+
+model Membership {
+  id       String   @id @default(cuid())
+  userId   String
+  orgId    String
+  role     Role
+  joinedAt DateTime @default(now())
+
+  user User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  org  Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, orgId]) // a user can only have one role per org
+  @@index([orgId])
+  @@map("memberships")
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
+  expiresAt DateTime
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model InviteToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  orgId     String
+  role      Role
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdBy String
+  createdAt DateTime @default(now())
+
+  org     Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  creator User         @relation("InviteCreatedBy", fields: [createdBy], references: [id])
+
+  @@index([orgId])
+  @@map("invite_tokens")
+}
+
+model VerificationToken {
+  id        String           @id @default(cuid())
+  token     String           @unique
+  userId    String
+  type      VerificationType
+  expiresAt DateTime
+  used      Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("verification_tokens")
+}
