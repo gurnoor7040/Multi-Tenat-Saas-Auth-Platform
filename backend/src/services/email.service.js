@@ -1,21 +1,46 @@
-import nodemailer from "nodemailer";
 import { env } from "../config/env.js";
 import { logger } from "../utils/logger.js";
 
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: env.gmailUser,
-    pass: env.gmailAppPassword,
-  },
-});
+const BREVO_ENDPOINT = "https://api.brevo.com/v3/smtp/email";
+
+// Accepts either "email@domain.com" or "Display Name <email@domain.com>".
+function parseSender(emailFrom) {
+  const match = emailFrom.match(/^(.*)<(.+)>$/);
+  if (match) {
+    return { name: match[1].trim() || undefined, email: match[2].trim() };
+  }
+  return { email: emailFrom.trim() };
+}
+
+const sender = parseSender(env.emailFrom);
+
+async function send({ to, subject, html }) {
+  const res = await fetch(BREVO_ENDPOINT, {
+    method: "POST",
+    headers: {
+      "api-key": env.brevoApiKey,
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({
+      sender,
+      to: [{ email: to }],
+      subject,
+      htmlContent: html,
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`Brevo request failed (${res.status}): ${body}`);
+  }
+}
 
 export async function sendVerificationEmail(toEmail, token) {
   const link = `${env.clientUrl}/verify-email?token=${token}`;
 
   try {
-    await transporter.sendMail({
-      from: env.emailFrom,
+    await send({
       to: toEmail,
       subject: "Verify your email",
       html: `
@@ -34,8 +59,7 @@ export async function sendPasswordResetEmail(toEmail, token) {
   const link = `${env.clientUrl}/reset-password?token=${token}`;
 
   try {
-    await transporter.sendMail({
-      from: env.emailFrom,
+    await send({
       to: toEmail,
       subject: "Reset your password",
       html: `
