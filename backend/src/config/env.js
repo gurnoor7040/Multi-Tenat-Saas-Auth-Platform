@@ -7,7 +7,8 @@ const required = [
   "JWT_ACCESS_SECRET",
   "UPSTASH_REDIS_REST_URL",
   "UPSTASH_REDIS_REST_TOKEN",
-  "RESEND_API_KEY",
+  "GMAIL_USER",
+  "GMAIL_APP_PASSWORD",
   "EMAIL_FROM",
   "CLIENT_URL",
   "GOOGLE_CLIENT_ID",
@@ -38,7 +39,8 @@ export const env = {
   redisUrl: process.env.UPSTASH_REDIS_REST_URL,
   redisToken: process.env.UPSTASH_REDIS_REST_TOKEN,
 
-  resendApiKey: process.env.RESEND_API_KEY,
+  gmailUser: process.env.GMAIL_USER,
+  gmailAppPassword: process.env.GMAIL_APP_PASSWORD,
   emailFrom: process.env.EMAIL_FROM,
 
   clientUrl: process.env.CLIENT_URL,
